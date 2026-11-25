@@ -29,6 +29,7 @@ App de treino de pôquer (torneios MTT) do Guilherme. Leia isto antes de qualque
   - Congelados (não alterar; hashes em `engineVersion.js`): `cards`, `rng`, `positions`, `evaluator`, `betting`, `pots`, `showdown`, `settlement`.
   - Etapa 4: `engineVersion`, `record` (registro canônico de mãos), `replay` (replay e verificação).
   - Conferir integridade: `cd engine/src && sha256sum *.js` e comparar com `engineVersion.js` e `simulador-v01/build.js`.
+- `app/` — PWA (passo 1): `template.html` (mesa adaptada ao celular + histórico), `storage.js` (IndexedDB), `manifest.webmanifest`, `sw.template.js` (offline), `icons/`, `build.js` → `dist/` (não versionado). Reusa `simulador-v01/controller.js` sem alterar. Testes: `npm test` (CI) e `npm run test:e2e` (Playwright, local). Deploy: `.github/workflows/pages.yml` a cada push na `main`.
 - `engine/docs/PENDENCIAS.md` — defeitos conhecidos P1–P3 (só afetam configurações inválidas; não corrigir sem autorização).
 - `simulador-v01/` — mesa v0.1.3 (HTML + controller com bots simples, NÃO estratégicos). `node build.js` gera `mesa-v0.1.html`. Serve de base visual para o app.
 - Os testes originais do motor (unitários, propriedades, oráculos, mutação, fuzz, exaustivo de 7 cartas) ainda estão no projeto "POKER" do claude.ai e não foram trazidos. Ao mexer no motor, escreva testes novos com `node --test`.
@@ -40,7 +41,7 @@ App de treino de pôquer (torneios MTT) do Guilherme. Leia isto antes de qualque
 - Próxima aula a escolher: enfrentar um open (fold/call/3-bet) ou pós-flop com mãos médias.
 
 ## Ordem de construção
-1. PWA: levar o motor e a mesa para o app no celular, com histórico salvo no aparelho (IndexedDB) e exportação.
+1. PWA: levar o motor e a mesa para o app no celular, com histórico salvo no aparelho (IndexedDB) e exportação. — Feito em 25/11/2026 (`app/`); falta publicar (repositório privado: Pages gratuito exige repositório público).
 2. Trainer de push/fold com equilíbrio calculado (chip EV primeiro, depois ICM), testado contra valores conhecidos.
 3. Biblioteca pós-flop: script que roda o TexasSolver no Mac e exporta os resultados para o app (exige o Mac).
 4. Trilha de aulas, revisão de erros e acompanhamento da evolução.
