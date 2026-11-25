@@ -1,0 +1,9 @@
+{
+  "name": "poker-academy",
+  "private": true,
+  "scripts": {
+    "build": "node app/build.js",
+    "test": "node --test --test-reporter=spec app/test/*.test.js",
+    "test:e2e": "node --test --test-reporter=spec app/test-e2e/*.test.js"
+  }
+}
