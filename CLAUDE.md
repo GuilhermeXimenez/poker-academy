@@ -41,7 +41,7 @@ App de treino de pôquer (torneios MTT) do Guilherme. Leia isto antes de qualque
 - Próxima aula a escolher: enfrentar um open (fold/call/3-bet) ou pós-flop com mãos médias.
 
 ## Ordem de construção
-1. PWA: levar o motor e a mesa para o app no celular, com histórico salvo no aparelho (IndexedDB) e exportação. — Feito em 25/11/2026 (`app/`); falta publicar (repositório privado: Pages gratuito exige repositório público).
+1. PWA: levar o motor e a mesa para o app no celular, com histórico salvo no aparelho (IndexedDB) e exportação. — Feito e publicado em 25/11/2026: https://guilhermeximenez.github.io/poker-academy/ (repositório público). Bots jogam instantaneamente; o painel de ação mostra só apostas/calls/checks até a vez do usuário (sem folds).
 2. Trainer de push/fold com equilíbrio calculado (chip EV primeiro, depois ICM), testado contra valores conhecidos.
 3. Biblioteca pós-flop: script que roda o TexasSolver no Mac e exporta os resultados para o app (exige o Mac).
 4. Trilha de aulas, revisão de erros e acompanhamento da evolução.

@@ -104,3 +104,36 @@ test('instala, joga, salva o histórico, funciona offline e exporta', async () =
   assert.deepStrictEqual(errors, []);
   await ctx.close();
 });
+
+test('bots jogam na hora e o painel mostra só a ação relevante (sem folds)', async () => {
+  const ctx = await browser.newContext(PHONE);
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto(base);
+  assert.ok(await page.isVisible('#install-help'), 'ajuda de instalação deveria aparecer no navegador');
+  let checked = 0;
+  for (let h = 0; h < 25; h++) {
+    const t0 = Date.now();
+    await page.waitForSelector('#btn-fold, #btn-check, #btn-next', { timeout: 1500 });
+    assert.ok(Date.now() - t0 < 1500, 'esperou os bots');
+    if (await page.$('#facing')) {
+      const txt = await page.textContent('#facing');
+      assert.ok(!/fold/i.test(txt), 'o resumo não deve listar folds: ' + txt);
+      assert.match(txt, /Pré-flop: /);
+      const st = await page.evaluate(() => window.PA_UI.state);
+      const log = st.log.filter(e => e.type === 'action' && e.action !== 'fold' && st.street === 'preflop');
+      if (st.street === 'preflop') assert.strictEqual((txt.match(/→/g) || []).length, Math.max(0, log.length - 1));
+      checked++;
+    }
+    if (h === 3 && SHOTS) await page.screenshot({ path: path.join(SHOTS, 'decisao.png') });
+    const b = await page.$('#btn-next') || await page.$('#btn-fold') || await page.$('#btn-check');
+    await b.tap();
+  }
+  assert.ok(checked >= 10);
+  await page.tap('#install-help-close');
+  await page.reload();
+  assert.ok(!(await page.isVisible('#install-help')));
+  assert.deepStrictEqual(errors, []);
+  await ctx.close();
+});
