@@ -1,0 +1,533 @@
+<title>Poker Academy Mesa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: mesa oval no topo, barra de ações logo abaixo, histórico e resultado ao lado (desktop) ou embaixo (celular). */
+:root {
+  --bg: #101518; --panel: #182024; --line: #2b383d; --ink: #ece7db; --muted: #93a39f;
+  --felt: #0f4a43; --felt-edge: #0a332e; --rail: #3a2a20; --brass: #d9ac4a; --brass-ink: #1b1408;
+  --card: #f6f2e8; --card-ink: #1c1c1c; --spade: #1c1c1c; --heart: #c8352b; --diamond: #2563c9; --club: #1f8a4c;
+  --danger: #d4594d; --ok: #58b07a; --back: #7a2f2a; --back-2: #5c211d;
+  --sans: 'IBM Plex Sans Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--sans); font-size: 15px; line-height: 1.4; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-block: 12px 28px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin-bottom: 10px; }
+header.top h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: .02em; }
+header.top .meta { color: var(--muted); font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+header.top .spacer { flex: 1; }
+.badge { font-family: var(--mono); font-size: 11.5px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.badge.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.badge.bad { color: var(--danger); border-color: var(--danger); }
+.notice { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+.notice b { color: var(--brass); font-weight: 600; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* Mesa */
+.table-box { position: relative; width: 100%; aspect-ratio: 16 / 9.4; max-width: 100%; }
+@media (max-width: 640px) { .table-box { aspect-ratio: 3 / 4.1; } }
+.felt { position: absolute; inset: 9% 7%; border-radius: 50% / 50%;
+  background: radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--felt) 85%, white 6%) 0%, var(--felt) 55%, var(--felt-edge) 100%);
+  box-shadow: 0 0 0 10px var(--rail), 0 0 0 12px #0006, inset 0 0 40px #0008; }
+@media (max-width: 640px) { .felt { inset: 10% 9%; border-radius: 46% / 36%; } }
+.center { position: absolute; left: 50%; top: 47%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 8px; width: 62%; }
+.pot { font-family: var(--mono); font-size: 13px; background: #0007; padding: 3px 10px; border-radius: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.board { display: flex; gap: 5px; min-height: 52px; }
+.street-tag { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: color-mix(in srgb, var(--ink) 60%, transparent); }
+
+.card { width: 38px; height: 52px; border-radius: 5px; background: var(--card); color: var(--card-ink);
+  display: grid; grid-template-rows: auto 1fr; padding: 3px 4px; font-family: var(--mono); font-weight: 600; box-shadow: 0 1px 3px #0009; line-height: 1; }
+.card .r { font-size: 17px; }
+.card .s { font-size: 18px; align-self: end; justify-self: end; }
+.card.s-s { color: var(--spade); } .card.s-h { color: var(--heart); } .card.s-d { color: var(--diamond); } .card.s-c { color: var(--club); }
+.card.back { background: repeating-linear-gradient(45deg, var(--back) 0 4px, var(--back-2) 4px 8px); border: 2px solid var(--card); }
+.card.sm { width: 30px; height: 42px; } .card.sm .r { font-size: 14px; } .card.sm .s { font-size: 14px; }
+@media (max-width: 640px) { .card { width: 30px; height: 42px; } .card .r, .card .s { font-size: 14px; } .card.sm { width: 25px; height: 35px; } .card.sm .r, .card.sm .s { font-size: 12px; } .board { min-height: 42px; gap: 3px; } }
+
+.seat { position: absolute; transform: translate(-50%, -50%); width: 108px; display: grid; justify-items: center; gap: 3px; z-index: 2; }
+@media (max-width: 640px) { .seat { width: 86px; } .plate { padding: 2px 4px; } .plate .st small { display: none; } .plate .nm { font-size: 12px; } .center { width: 54%; } }
+.seat .cards { display: flex; gap: 2px; height: 42px; }
+@media (max-width: 640px) { .seat .cards { height: 35px; } }
+.plate { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 3px 6px; text-align: center; }
+.plate .nm { font-size: 13px; font-weight: 600; display: flex; justify-content: center; gap: 5px; align-items: baseline; white-space: nowrap; overflow: hidden; }
+.plate .ps { font-family: var(--mono); font-size: 10.5px; color: var(--brass); }
+.plate .st { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.plate .st small { color: var(--muted); font-size: 10.5px; }
+.seat.hero .plate { border-color: var(--brass); }
+.seat.turn .plate { box-shadow: 0 0 0 2px var(--brass); }
+.seat.folded { opacity: .45; }
+.seat .tag { font-size: 10.5px; font-family: var(--mono); padding: 0 5px; border-radius: 3px; background: var(--danger); color: #fff; }
+.seat .tag.win { background: var(--ok); color: #06210f; }
+.chips { position: absolute; transform: translate(-50%, -50%); font-family: var(--mono); font-size: 11.5px; background: var(--brass); color: var(--brass-ink);
+  padding: 1px 7px; border-radius: 10px; font-weight: 600; z-index: 3; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dealer { position: absolute; transform: translate(-50%, -50%); width: 20px; height: 20px; border-radius: 50%; background: var(--card); color: var(--card-ink);
+  font: 700 11px/20px var(--sans); text-align: center; box-shadow: 0 1px 2px #000a; z-index: 1; }
+
+/* Ações */
+.actions { margin-top: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 10px; }
+.act-info { display: flex; flex-wrap: wrap; gap: 4px 16px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.act-info b { color: var(--ink); font-weight: 500; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font: 600 15px var(--sans); border-radius: 7px; border: 1px solid var(--line); background: #22302f; color: var(--ink); padding: 9px 16px; cursor: pointer; min-height: 42px; }
+button:hover:not(:disabled) { filter: brightness(1.15); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+button:disabled { opacity: .4; cursor: default; }
+button.fold { background: #3a2422; border-color: #5a3330; }
+button.primary, button.aggr { background: var(--brass); color: var(--brass-ink); border-color: var(--brass); }
+button.ghost { background: transparent; }
+button.small { min-height: 32px; padding: 4px 10px; font-size: 13px; font-weight: 500; }
+.sizer { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 10px; align-items: center; }
+.sizer input[type=range] { width: 100%; accent-color: var(--brass); }
+input[type=number], input[type=text], select { font: 500 14px var(--mono); background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; width: 100%; min-width: 0; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.err { color: var(--danger); font-size: 13px; min-height: 0; }
+.waiting { color: var(--muted); font-size: 14px; }
+
+/* Painel lateral */
+.side { display: grid; gap: 12px; min-width: 0; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; }
+.box h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+.log { font-family: var(--mono); font-size: 12px; max-height: 300px; overflow-y: auto; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+.log .st { color: var(--brass); margin-top: 6px; }
+.log .hero { color: var(--ink); font-weight: 600; }
+.log div { color: color-mix(in srgb, var(--ink) 82%, transparent); overflow-wrap: anywhere; }
+.result { display: grid; gap: 8px; font-size: 14px; }
+.result .pot-line { border-left: 3px solid var(--brass); padding-left: 8px; }
+.result .pot-line small { color: var(--muted); display: block; font-size: 12.5px; }
+.result table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.result td { padding: 2px 4px; border-bottom: 1px solid var(--line); }
+.result td.n { text-align: right; }
+.pos { color: var(--ok); } .neg { color: var(--danger); }
+.hands { display: grid; gap: 6px; }
+.hands .h { display: flex; gap: 8px; align-items: center; font-size: 13px; flex-wrap: wrap; }
+.hands .h .cs { display: flex; gap: 2px; }
+textarea { width: 100%; min-height: 90px; font: 11px var(--mono); background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 6px; resize: vertical; }
+.export-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.export-row .msg { font-size: 12.5px; color: var(--ok); }
+
+/* Configuração */
+.setup { margin-top: 12px; }
+.setup form { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; }
+.setup label { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.setup .full { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.setup .hint { font-size: 12.5px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .seat.turn .plate { transition: box-shadow .2s; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Poker Academy · Mesa v0.1.3</h1>
+    <span class="meta" id="meta"></span>
+    <span class="spacer"></span>
+    <span class="badge" id="integrity">Conferindo o motor…</span>
+  </header>
+  <p class="notice"><b>Bots simples, não estratégicos.</b> Eles seguem regras fixas só para a mão andar; não use as jogadas deles como referência. Cada mão é independente: os stacks voltam aos valores configurados e o botão anda um lugar.</p>
+
+  <div class="layout">
+    <main style="min-width:0">
+      <div class="table-box" id="table">
+        <div class="felt"></div>
+        <div class="center">
+          <div class="street-tag" id="street"></div>
+          <div class="board" id="board"></div>
+          <div class="pot" id="pot"></div>
+        </div>
+      </div>
+
+      <section class="actions" id="actions" aria-live="polite"></section>
+
+      <section class="box setup" id="setup-box" hidden>
+        <h2>Configurar mesa</h2>
+        <form id="setup-form" novalidate>
+          <label>Jogadores (2–9)<input type="number" id="f-players" min="2" max="9" step="1"></label>
+          <label>Seu stack (BB)<input type="number" id="f-hero" min="1" max="1000" step="0.5"></label>
+          <label>Stack dos bots (BB)<input type="number" id="f-bots" min="1" max="1000" step="0.5"></label>
+          <label>Small blind (fichas)<input type="number" id="f-sb" min="1" step="1"></label>
+          <label>Big blind (fichas)<input type="number" id="f-bb" min="2" step="1"></label>
+          <label>BB ante (fichas, 0 = sem)<input type="number" id="f-ante" min="0" step="1"></label>
+          <label>Semente (vazio = aleatória)<input type="text" id="f-seed" inputmode="numeric" placeholder="aleatória"></label>
+          <label class="chk"><span>Após o seu fold</span><span style="display:flex;gap:6px;align-items:center;color:var(--ink)"><input type="checkbox" id="f-autonext"> ir direto para a próxima mão</span></label>
+          <label>Velocidade dos bots<select id="f-speed"><option value="800">Normal</option><option value="300">Rápida</option><option value="0">Instantânea</option></select></label>
+          <div class="full">
+            <button type="submit" class="primary">Aplicar e começar nova mão</button>
+            <button type="button" class="ghost" id="setup-cancel">Cancelar</button>
+            <span class="err" id="setup-err"></span>
+          </div>
+          <p class="hint full">Com semente, a sequência de mãos se repete (mão 1 usa a semente, mão 2 a semente + 1, e assim por diante). O BB ante é pago pelo big blind, como na maioria dos MTTs online.</p>
+        </form>
+      </section>
+    </main>
+
+    <aside class="side">
+      <section class="box" id="result-box" hidden>
+        <h2>Resultado da mão</h2>
+        <div class="result" id="result"></div>
+      </section>
+      <section class="box">
+        <h2>Histórico da mão</h2>
+        <div class="log" id="log"></div>
+      </section>
+      <section class="box">
+        <h2>Sessão</h2>
+        <div class="export-row">
+          <button class="small primary" id="btn-session">Copiar sessão (0 mãos)</button>
+          <button class="small ghost" id="btn-session-clear">Limpar sessão</button>
+          <span class="msg" id="session-msg"></span>
+        </div>
+        <p class="hint" style="font-size:12.5px;color:var(--muted);margin:8px 0 0">Junta todas as mãos jogadas num texto compacto para colar no chat. Fica guardada neste navegador até você limpar.</p>
+        <textarea id="session-text" readonly hidden aria-label="Texto da sessão"></textarea>
+      </section>
+      <div class="btn-row">
+        <button class="small" id="btn-setup">Configurar mesa</button>
+        <button class="small ghost" id="btn-restart">Reiniciar do zero</button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!--ENGINE-->
+<!--CONTROLLER-->
+<script>
+(function () {
+  'use strict';
+  const PA = window.PA, G = PA.game, B = PA.betting, EVM = PA.engineVersion;
+  const EXPECTED = /*EXPECTED_HASHES*/{};
+  const $ = id => document.getElementById(id);
+  const RANKS = '23456789TJQKA', SUITS = 'cdhs', SYM = { c: '♣', d: '♦', h: '♥', s: '♠' };
+  const fmt = n => n.toLocaleString('pt-BR');
+
+  let setup = Object.assign({}, G.DEFAULT_SETUP, { speed: 800, autoNext: true });
+  let fastForward = false, notice = '';
+  try { const s = JSON.parse(localStorage.getItem('pa-v01-setup') || 'null'); if (s) setup = Object.assign(setup, s); } catch (e) { /* sem armazenamento */ }
+  let handNo = 0, stamp = Date.now(), state = null, done = null, timer = null, errMsg = '';
+  let session = [];
+  try { const v = JSON.parse(localStorage.getItem('pa-v01-session') || '[]'); if (Array.isArray(v)) session = v.filter(x => typeof x === 'string'); } catch (e) { /* sem armazenamento */ }
+  let sessionStart = (() => { try { return localStorage.getItem('pa-v01-session-start') || null; } catch (e) { return null; } })();
+  function saveSession() {
+    try { localStorage.setItem('pa-v01-session', JSON.stringify(session)); if (sessionStart) localStorage.setItem('pa-v01-session-start', sessionStart); else localStorage.removeItem('pa-v01-session-start'); } catch (e) { /* sem armazenamento */ }
+    $('btn-session').textContent = `Copiar sessão (${session.length} ${session.length === 1 ? 'mão' : 'mãos'})`;
+    $('btn-session').disabled = session.length === 0;
+  }
+
+  // ---------------------------------------------------------------- integridade do motor
+  (async function verify() {
+    const el = $('integrity');
+    try {
+      if (!(window.crypto && crypto.subtle)) throw new Error('sem crypto.subtle');
+      const scripts = [...document.querySelectorAll('script[data-module]')];
+      let okN = 0; const badList = [];
+      for (const s of scripts) {
+        const name = s.dataset.module;
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s.textContent));
+        const hex = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+        const ref = EXPECTED[name];
+        const table = EVM.ENGINE_MODULES[name];
+        if (hex === ref && (table === undefined || table === hex)) okN++; else badList.push(name);
+      }
+      if (!badList.length && okN === Object.keys(EXPECTED).length) {
+        el.textContent = `Motor oficial: ${okN}/${okN} módulos conferidos (SHA-256)`; el.className = 'badge ok';
+      } else { el.textContent = 'Motor DIVERGENTE: ' + badList.join(', '); el.className = 'badge bad'; }
+    } catch (e) { el.textContent = 'Conferência SHA-256 indisponível neste navegador'; el.className = 'badge'; }
+  })();
+
+  // ---------------------------------------------------------------- utilidades de exibição
+  function cardEl(c, small) {
+    const d = document.createElement('div');
+    if (c === null) { d.className = 'card back' + (small ? ' sm' : ''); return d; }
+    const r = RANKS[c >> 2], s = SUITS[c & 3];
+    d.className = 'card s-' + s + (small ? ' sm' : '');
+    d.innerHTML = `<span class="r">${r === 'T' ? '10' : r}</span><span class="s">${SYM[s]}</span>`;
+    d.setAttribute('aria-label', r + s);
+    return d;
+  }
+  const cardTxt = c => RANKS[c >> 2] + SYM[SUITS[c & 3]];
+  const bbOf = x => { const v = x / state.config.bigBlind; return (Math.round(v * 10) / 10).toLocaleString('pt-BR') + ' BB'; };
+  const name = id => G.displayName(id);
+  const STREET_PT = { preflop: 'Pré-flop', flop: 'Flop', turn: 'Turn', river: 'River' };
+
+  function seatXY(i, n, rx, ry) {
+    const th = (90 + i * 360 / n) * Math.PI / 180;
+    return [50 + rx * Math.cos(th), 50 + ry * Math.sin(th)];
+  }
+
+  // ---------------------------------------------------------------- render
+  function render() {
+    const s = state, n = s.players.length, mobile = matchMedia('(max-width: 640px)').matches;
+    const showdown = s.phase === 'handOver' && done && done.settlement.reason === 'showdown';
+    $('meta').textContent = `Mão ${handNo + 1} · blinds ${fmt(s.config.smallBlind)}/${fmt(s.config.bigBlind)}` +
+      (s.config.ante ? ` · BB ante ${fmt(s.config.ante)}` : '') + ` · ${n} jogadores` + (setup.seed !== null && setup.seed !== '' ? ` · semente ${(Number(setup.seed) + handNo) >>> 0}` : '');
+    const tb = $('table');
+    tb.querySelectorAll('.seat,.chips,.dealer').forEach(e => e.remove());
+    const rx = mobile ? 42 : 45, ry = mobile ? 44 : 43;
+    const winners = new Set(done ? done.settlement.pots.flatMap(p => p.winners) : []);
+    s.players.forEach((p, i) => {
+      const [x, y] = seatXY(i, n, rx, ry);
+      const seat = document.createElement('div');
+      seat.className = 'seat' + (p.id === G.HERO ? ' hero' : '') + (p.status === 'folded' ? ' folded' : '') + (s.toAct === p.id && s.phase === 'betting' ? ' turn' : '');
+      seat.style.left = x + '%'; seat.style.top = y + '%';
+      const cards = document.createElement('div'); cards.className = 'cards';
+      const reveal = p.id === G.HERO || (showdown && p.status !== 'folded');
+      if (p.status !== 'folded' || p.id === G.HERO) p.holeCards.forEach(c => cards.appendChild(cardEl(reveal ? c : null, true)));
+      seat.appendChild(cards);
+      const plate = document.createElement('div'); plate.className = 'plate';
+      const stack = done ? done.settlement.finalStacks[p.id] : p.stack;
+      plate.innerHTML = `<div class="nm">${name(p.id)} <span class="ps">${p.position}</span></div>` +
+        `<div class="st">${bbOf(stack)} <small>${fmt(stack)}</small></div>`;
+      seat.appendChild(plate);
+      if (p.status === 'allin' && !done) { const t = document.createElement('span'); t.className = 'tag'; t.textContent = 'ALL-IN'; seat.appendChild(t); }
+      if (done && winners.has(p.id)) { const t = document.createElement('span'); t.className = 'tag win'; t.textContent = 'GANHOU ' + fmt(Object.values(done.settlement.pots).reduce((a, pt) => a + (pt.shares[p.id] || 0), 0)); seat.appendChild(t); }
+      tb.appendChild(seat);
+      if (p.streetCommitted > 0 && s.phase === 'betting') {
+        const [cx, cy] = seatXY(i, n, rx * (mobile ? 0.7 : 0.55), ry * (mobile ? 0.72 : 0.5));
+        const ch = document.createElement('div'); ch.className = 'chips'; ch.textContent = fmt(p.streetCommitted);
+        ch.style.left = cx + '%'; ch.style.top = cy + '%'; tb.appendChild(ch);
+      }
+      if (i === s.roles.button) {
+        const [dx, dy] = seatXY(i + 0.42, n, rx * 0.68, ry * 0.62);
+        const d = document.createElement('div'); d.className = 'dealer'; d.textContent = 'D'; d.title = 'Botão';
+        d.style.left = dx + '%'; d.style.top = dy + '%'; tb.appendChild(d);
+      }
+    });
+    const board = $('board'); board.innerHTML = '';
+    s.board.forEach(c => board.appendChild(cardEl(c)));
+    $('street').textContent = s.phase === 'handOver' ? 'Fim da mão' : STREET_PT[s.street];
+    const pot = B.getPot(s);
+    $('pot').textContent = `Pote ${fmt(pot)}` + (mobile ? '' : ` · ${bbOf(pot)}`);
+    renderLog(); renderActions(); renderResult();
+  }
+
+  function renderLog() {
+    const L = $('log'); L.innerHTML = '';
+    const KIND = { smallBlind: 'small blind', bigBlind: 'big blind', ante: 'BB ante' };
+    for (const e of state.log) {
+      const d = document.createElement('div');
+      if (e.type === 'deal') { d.textContent = 'Cartas distribuídas. Suas: ' + state.players.find(p => p.id === G.HERO).holeCards.map(cardTxt).join(' '); }
+      else if (e.type === 'post') { d.textContent = `${name(e.player)} posta ${KIND[e.kind] || e.kind} ${fmt(e.amount)}${e.allIn ? ' (all-in)' : ''}`; }
+      else if (e.type === 'street') { d.className = 'st'; d.textContent = `${STREET_PT[e.street]}: ${e.board.map(cardTxt).join(' ')}`; }
+      else if (e.type === 'action') {
+        const who = name(e.player);
+        const verb = { fold: 'desiste (fold)', check: 'passa (check)', call: 'paga (call) ' + fmt(e.amount || 0), bet: 'aposta (bet) ' + fmt(e.to || 0), raise: 'aumenta (raise) para ' + fmt(e.to || 0) }[e.action];
+        d.textContent = `${who} ${verb}${e.allIn ? ' — all-in' : ''}`;
+        if (e.player === G.HERO) d.className = 'hero';
+      } else if (e.type === 'handOver') { d.className = 'st'; d.textContent = e.reason === 'allFolded' ? 'Todos desistiram' : 'Showdown'; }
+      else continue;
+      L.appendChild(d);
+    }
+    L.scrollTop = L.scrollHeight;
+  }
+
+  // ---------------------------------------------------------------- ações do herói
+  function presetsFor(o, g) {
+    const s = state, bb = s.config.bigBlind, C = o.currentBet, pot = B.getPot(s);
+    const list = [];
+    if (s.street === 'preflop') {
+      if (C <= bb) [2, 2.5, 3].forEach(k => list.push([k.toLocaleString('pt-BR') + ' BB', Math.round(k * bb)]));
+      else [2.5, 3].forEach(k => list.push([k.toLocaleString('pt-BR') + 'x', Math.round(k * C)]));
+      list.push(['Pote', C + pot + o.toCall]);
+    } else if (C === 0) {
+      [[33, 1 / 3], [50, 0.5], [75, 0.75], [100, 1]].forEach(([l, f]) => list.push([l === 100 ? 'Pote' : l + '%', Math.round(f * pot)]));
+    } else {
+      [2.5, 3].forEach(k => list.push([k.toLocaleString('pt-BR') + 'x', Math.round(k * C)]));
+      list.push(['Pote', C + pot + o.toCall]);
+    }
+    return list.map(([l, v]) => [l, Math.max(g.min, Math.min(g.max, v))]).filter((x, i, a) => a.findIndex(y => y[1] === x[1]) === i);
+  }
+
+  function heroAct(action) {
+    try { state = B.applyAction(state, Object.assign({ playerId: G.HERO }, action)); errMsg = ''; }
+    catch (e) { errMsg = e.message; renderActions(); return; }
+    notice = '';
+    if (action.type === 'fold' && setup.autoNext !== false) fastForward = true;
+    advance();
+  }
+
+  function renderActions() {
+    const box = $('actions'); box.innerHTML = '';
+    const s = state;
+    if (notice) { const nt = document.createElement('div'); nt.className = 'waiting'; nt.id = 'auto-notice'; nt.textContent = notice; box.appendChild(nt); }
+    if (s.phase === 'handOver') {
+      const row = document.createElement('div'); row.className = 'btn-row';
+      const nx = document.createElement('button'); nx.className = 'primary'; nx.id = 'btn-next'; nx.textContent = 'Próxima mão';
+      nx.onclick = () => { notice = ''; handNo++; startHand(); };
+      row.appendChild(nx); box.appendChild(row); setTimeout(() => nx.focus(), 0); return;
+    }
+    if (s.toAct !== G.HERO) {
+      const w = document.createElement('div'); w.className = 'waiting'; w.textContent = `Vez de ${name(s.toAct)}…`; box.appendChild(w); return;
+    }
+    const o = B.legalActions(s), A = o.actions, me = s.players.find(p => p.id === G.HERO);
+    const pot = B.getPot(s);
+    const info = document.createElement('div'); info.className = 'act-info';
+    info.innerHTML = `<span>Sua vez · <b>${me.position}</b></span><span>Para pagar <b>${fmt(o.toCall)}</b></span><span>Pote <b>${fmt(pot)}</b></span>` +
+      `<span>Seu stack <b>${bbOf(me.stack)}</b> (${fmt(me.stack)})</span>` + (o.toCall ? `<span>Pot odds <b>${(100 * o.toCall / (pot + o.toCall)).toFixed(1).replace('.', ',')}%</b></span>` : '');
+    box.appendChild(info);
+    const row = document.createElement('div'); row.className = 'btn-row';
+    const mk = (label, cls, fn, id) => { const b = document.createElement('button'); b.textContent = label; b.className = cls; b.onclick = fn; if (id) b.id = id; row.appendChild(b); return b; };
+    if (A.fold && !A.check) mk('Fold', 'fold', () => heroAct({ type: 'fold' }), 'btn-fold');
+    if (A.check) mk('Check', '', () => heroAct({ type: 'check' }), 'btn-check');
+    if (A.call) mk(`Call ${fmt(A.call.amount)}${A.call.isAllIn ? ' (all-in)' : ''}`, '', () => heroAct({ type: 'call' }), 'btn-call');
+    const g = A.bet || A.raise;
+    let sizer = null;
+    if (g) {
+      const verb = g.type === 'bet' ? 'Bet' : 'Raise para';
+      const amountBtn = mk('', 'aggr', () => {
+        const v = Number(num.value);
+        heroAct({ type: g.type, to: v });
+      }, 'btn-aggr');
+      sizer = document.createElement('div'); sizer.className = 'sizer';
+      const range = document.createElement('input'); range.type = 'range'; range.min = g.min; range.max = g.max; range.step = 1; range.id = 'size-range';
+      range.setAttribute('aria-label', 'Tamanho da aposta');
+      const num = document.createElement('input'); num.type = 'number'; num.min = g.min; num.max = g.max; num.step = 1; num.id = 'size-input';
+      num.setAttribute('aria-label', 'Valor total da aposta (para)');
+      const setV = v => { v = Math.round(Number(v)); range.value = v; num.value = v;
+        amountBtn.textContent = `${verb} ${fmt(v)} · ${bbOf(v)}${v === g.max ? ' (all-in)' : ''}`; };
+      range.oninput = () => setV(range.value);
+      num.oninput = () => { amountBtn.textContent = `${verb} ${num.value ? fmt(Number(num.value)) : '?'}`; range.value = num.value; };
+      num.onkeydown = e => { if (e.key === 'Enter') amountBtn.click(); };
+      sizer.appendChild(range); sizer.appendChild(num);
+      if (g.allInOnly) { range.disabled = true; num.disabled = true; }
+      const def = presetsFor(o, g)[s.street === 'preflop' ? 0 : 1] || [null, g.min];
+      setV(g.allInOnly ? g.max : (def ? def[1] : g.min));
+      const pr = document.createElement('div'); pr.className = 'presets';
+      if (!g.allInOnly) {
+        [['Mín.', g.min], ...presetsFor(o, g)].forEach(([l, v]) => { const b = document.createElement('button'); b.className = 'small'; b.type = 'button';
+          b.textContent = `${l} · ${fmt(v)}`; b.onclick = () => setV(v); pr.appendChild(b); });
+      }
+      box.appendChild(row); box.appendChild(sizer); box.appendChild(pr);
+      if (g.incomplete) { const n = document.createElement('div'); n.className = 'waiting'; n.textContent = 'Você só pode aumentar indo all-in (fichas abaixo do raise mínimo).'; box.appendChild(n); }
+    } else box.appendChild(row);
+    if (A.allin && A.allin.resolvesTo !== 'call' && !(g && g.allInOnly)) mk(`All-in ${fmt(me.stack + me.streetCommitted)}`, 'aggr', () => heroAct({ type: 'allin' }), 'btn-allin');
+    if (!g && o.restriction === 'NOT_REOPENED') { const n = document.createElement('div'); n.className = 'waiting'; n.textContent = 'A ação não foi reaberta para você: só call ou fold.'; box.appendChild(n); }
+    const err = document.createElement('div'); err.className = 'err'; err.textContent = errMsg; box.appendChild(err);
+  }
+
+  // ---------------------------------------------------------------- resultado e exportação
+  function renderResult() {
+    const rb = $('result-box'), R = $('result');
+    if (!done) { rb.hidden = true; return; }
+    rb.hidden = false; R.innerHTML = '';
+    const st = done.settlement;
+    const desc = id => (st.hands || []).find(h => h.id === id);
+    st.pots.forEach((p, k) => {
+      const d = document.createElement('div'); d.className = 'pot-line';
+      const label = p.kind === 'main' ? 'Pote principal' : `Pote lateral ${k}`;
+      const ws = p.winners.map(name).join(' e ');
+      const how = p.resolvedBy === 'showdown' ? (p.winners.length > 1 ? 'divide' : 'vence') + (p.winningDescription ? ' com ' + p.winningDescription : '') : 'leva sem showdown';
+      d.innerHTML = `<b>${label}: ${fmt(p.amount)}</b> — ${ws} ${how}<small>Elegíveis: ${p.eligible.map(name).join(', ')}` +
+        (p.deadMoney ? ` · dinheiro morto (BB ante) ${fmt(p.deadMoney)}` : '') + (p.oddChips.length ? ` · ficha ímpar para ${p.oddChips.map(o => name(o.playerId)).join(', ')}` : '') + '</small>';
+      R.appendChild(d);
+    });
+    st.uncalled.forEach(u => { const d = document.createElement('div'); d.className = 'pot-line'; d.innerHTML = `<small>Aposta não paga devolvida a ${name(u.playerId)}: ${fmt(u.amount)}</small>`; R.appendChild(d); });
+    if (st.hands) {
+      const hs = document.createElement('div'); hs.className = 'hands';
+      st.hands.slice().sort((a, b) => b.score - a.score).forEach(h => {
+        const row = document.createElement('div'); row.className = 'h';
+        const cs = document.createElement('span'); cs.className = 'cs'; h.holeCards.forEach(c => cs.appendChild(cardEl(c, true)));
+        row.appendChild(cs); const t = document.createElement('span'); t.textContent = `${name(h.id)}: ${h.description}`; row.appendChild(t); hs.appendChild(row);
+      });
+      R.appendChild(hs);
+    }
+    const tbl = document.createElement('table');
+    tbl.innerHTML = '<tbody>' + state.players.map(p => { const nv = st.net[p.id];
+      return `<tr><td>${name(p.id)} <span style="color:var(--muted)">${p.position}</span></td><td class="n">${fmt(st.finalStacks[p.id])}</td><td class="n ${nv > 0 ? 'pos' : nv < 0 ? 'neg' : ''}">${nv > 0 ? '+' : ''}${fmt(nv)}</td></tr>`; }).join('') + '</tbody>';
+    R.appendChild(tbl);
+    const ex = document.createElement('div'); ex.className = 'export-row';
+    const ta = document.createElement('textarea'); ta.readOnly = true; ta.value = done.text; ta.id = 'export-json'; ta.setAttribute('aria-label', 'Registro da mão em JSON');
+    const cp = document.createElement('button'); cp.className = 'small primary'; cp.textContent = 'Copiar mão (JSON)'; cp.id = 'btn-copy';
+    const msg = document.createElement('span'); msg.className = 'msg';
+    cp.onclick = () => {
+      const fallback = () => { ta.focus(); ta.select(); msg.textContent = 'Texto selecionado: use Ctrl+C / Cmd+C.'; };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(done.text).then(() => { msg.textContent = 'Copiado. Cole no chat para a análise.'; }, fallback);
+      else fallback();
+    };
+    ex.appendChild(cp); ex.appendChild(msg);
+    R.appendChild(ex); R.appendChild(ta);
+  }
+
+  // ---------------------------------------------------------------- fluxo
+  function advance() {
+    clearTimeout(timer);
+    if (fastForward) {
+      // Você desistiu: os bots terminam a mão na hora (mesmas regras do motor) e a mão é registrada na sessão.
+      try { let k = 0; while (state.phase !== 'handOver' && k++ < 500) state = B.applyAction(state, G.botAction(state)); }
+      catch (e) { fastForward = false; errMsg = 'Erro do bot: ' + e.message; render(); return; }
+    }
+    if (state.phase === 'handOver') {
+      try { done = G.finish(state); } catch (e) { errMsg = 'Erro na liquidação: ' + e.message; done = null; }
+      if (done && !done.logged) {
+        done.logged = true;
+        if (!sessionStart) sessionStart = new Date().toLocaleString('pt-BR');
+        try { session.push(G.handSummary(state, done.settlement, session.length)); } catch (e) { errMsg = 'Erro no resumo da mão: ' + e.message; }
+        saveSession();
+      }
+      if (fastForward && done) {
+        fastForward = false;
+        const nv = done.settlement.net[G.HERO];
+        notice = `Mão ${handNo + 1}: você desistiu (${nv < 0 ? '−' + bbOf(-nv) : '0 BB'}). Registrada na sessão.`;
+        handNo++; startHand(); return;
+      }
+      fastForward = false;
+      render(); return;
+    }
+    render();
+    if (state.toAct !== G.HERO) timer = setTimeout(() => {
+      try { state = B.applyAction(state, G.botAction(state)); } catch (e) { errMsg = 'Erro do bot: ' + e.message; render(); return; }
+      advance();
+    }, Number(setup.speed) || 0);
+  }
+
+  function startHand() {
+    clearTimeout(timer); done = null; errMsg = '';
+    try { state = G.newHand(setup, handNo, { stamp }); }
+    catch (e) { errMsg = e.message; $('setup-box').hidden = false; $('setup-err').textContent = e.message; return; }
+    advance();
+  }
+
+  // ---------------------------------------------------------------- configuração
+  function fillForm() {
+    $('f-players').value = setup.players; $('f-hero').value = setup.heroStackBB; $('f-bots').value = setup.botStackBB;
+    $('f-sb').value = setup.smallBlind; $('f-bb').value = setup.bigBlind; $('f-ante').value = setup.bbAnte;
+    $('f-seed').value = setup.seed === null ? '' : setup.seed; $('f-speed').value = String(setup.speed);
+    $('f-autonext').checked = setup.autoNext !== false;
+  }
+  $('btn-setup').onclick = () => { fillForm(); $('setup-err').textContent = ''; $('setup-box').hidden = false; $('f-players').focus(); };
+  $('setup-cancel').onclick = () => { $('setup-box').hidden = true; };
+  $('setup-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const cand = { players: $('f-players').value, heroStackBB: $('f-hero').value, botStackBB: $('f-bots').value, smallBlind: $('f-sb').value,
+      bigBlind: $('f-bb').value, bbAnte: $('f-ante').value, seed: $('f-seed').value.trim() === '' ? null : $('f-seed').value.trim() };
+    let norm;
+    try { norm = G.normalizeSetup(cand); } catch (err) { $('setup-err').textContent = err.message; return; }
+    setup = Object.assign(norm, { speed: Number($('f-speed').value), autoNext: $('f-autonext').checked });
+    try { localStorage.setItem('pa-v01-setup', JSON.stringify(setup)); } catch (err) { /* sem armazenamento */ }
+    $('setup-box').hidden = true; handNo = 0; stamp = Date.now(); startHand();
+  });
+  $('btn-session').onclick = () => {
+    const txt = G.sessionText(session, { date: sessionStart || '' });
+    const ta = $('session-text'), msg = $('session-msg');
+    const fallback = () => { ta.hidden = false; ta.value = txt; ta.focus(); ta.select(); msg.textContent = 'Texto selecionado: use Ctrl+C / Cmd+C.'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => { msg.textContent = 'Sessão copiada. Cole no chat.'; ta.hidden = true; }, fallback);
+    else fallback();
+  };
+  let clearArmed = false;
+  $('btn-session-clear').onclick = () => {
+    const b = $('btn-session-clear');
+    if (!clearArmed) { clearArmed = true; b.textContent = 'Confirmar: apagar a sessão'; setTimeout(() => { clearArmed = false; b.textContent = 'Limpar sessão'; }, 4000); return; }
+    clearArmed = false; b.textContent = 'Limpar sessão'; session = []; sessionStart = null; saveSession();
+    $('session-text').hidden = true; $('session-msg').textContent = 'Sessão apagada.';
+  };
+  saveSession();
+  window.PA_UI_SESSION = () => G.sessionText(session, { date: sessionStart || '' });
+  $('btn-restart').onclick = () => { handNo = 0; stamp = Date.now(); startHand(); };
+  window.addEventListener('resize', () => { if (state) render(); });
+  window.PA_UI = { get state() { return state; }, get done() { return done; }, setSpeed(v) { setup.speed = v; }, setAutoNext(v) { setup.autoNext = v; } };
+  startHand();
+})();
+</script>
